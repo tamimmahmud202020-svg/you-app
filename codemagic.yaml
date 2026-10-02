@@ -10,21 +10,30 @@ workflows:
       cache_paths:
         - ~/.pub-cache
     scripts:
+      - name: Unpack project (if you_app.zip exists)
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          if [ -f you_app.zip ]; then
+            echo "Found you_app.zip - replacing old project files"
+            rm -rf lib pubspec.yaml pubspec.lock l10n.yaml analysis_options.yaml
+            unzip -o -q you_app.zip
+          fi
+          ls -la
+          ls lib
+
       - name: Scaffold Android platform
         script: |
           set -e
           TEMP_DIR="$(mktemp -d)"
-          echo "Temp dir: $TEMP_DIR"
           cd "$TEMP_DIR"
           flutter create --no-pub --org com.youapp --project-name you .
           mkdir -p "$CM_BUILD_DIR/android"
           cp -R "$TEMP_DIR/android/." "$CM_BUILD_DIR/android/"
           cd "$CM_BUILD_DIR"
-
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ]; then
             sed -i.bak 's/android:label="you"/android:label="YOU"/g' "$MANIFEST"
-
             if ! grep -q "android.permission.INTERNET" "$MANIFEST"; then
               awk '{
                 if (/<application/ && !done) {
@@ -35,20 +44,11 @@ workflows:
                 print
               }' "$MANIFEST" > "$MANIFEST.tmp"
               mv "$MANIFEST.tmp" "$MANIFEST"
-              echo "INTERNET permission added to AndroidManifest.xml"
             fi
-
-            echo "--- Final AndroidManifest.xml ---"
-            cat "$MANIFEST"
           fi
-
-          echo "Android platform scaffolded."
 
       - name: Flutter pub get
         script: flutter pub get
-
-      - name: Generate localizations
-        script: flutter gen-l10n
 
       - name: Build release APK
         script: flutter build apk --release
