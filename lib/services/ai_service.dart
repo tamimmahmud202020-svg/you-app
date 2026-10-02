@@ -101,7 +101,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
     } on AiException {
       rethrow;
     } on FormatException catch (e) {
-      throw AiException.invalidResponse(e.message);
+      throw AiException.invalidResponse(e.toString());
     } catch (e) {
       throw AiException.unknown(e.toString());
     }
@@ -127,8 +127,10 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
     int maxTokens = 2048,
     bool expectJson = false,
   }) async {
+    // API key is passed via header (x-goog-api-key) instead of query param,
+    // because newer "AQ.Ab8..." style keys require header authentication.
     final uri = Uri.parse(
-      '$_baseUrl/${config.model}:generateContent?key=${config.apiKey}',
+      '$_baseUrl/${config.model}:generateContent',
     );
 
     final body = jsonEncode({
@@ -151,7 +153,10 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
       response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': config.apiKey ?? '',
+            },
             body: body,
           )
           .timeout(const Duration(seconds: 60));
@@ -165,6 +170,12 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
 
     if (response.statusCode == 400) {
       throw AiException.invalidApiKey();
+    }
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw AiException.invalidApiKey();
+    }
+    if (response.statusCode == 404) {
+      throw AiException.serverError(404);
     }
     if (response.statusCode == 429) {
       throw AiException.rateLimitExceeded();
