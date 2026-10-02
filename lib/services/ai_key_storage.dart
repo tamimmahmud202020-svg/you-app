@@ -18,10 +18,10 @@ class AiKeyStorage {
   }
 
   static Future<void> write(String apiKey) async {
-    await _storage.write(key: _apiKey, value: apiKey);
+    await _storage.write(key: _keyApiKey, value: apiKey);
   }
 
   static Future<void> delete() async {
-    await _storage.delete(key: _apiKey);
+    await _storage.delete(key: _keyApiKey);
   }
 }
