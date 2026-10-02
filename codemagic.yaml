@@ -1,0 +1,35 @@
+workflows:
+  android-release:
+    name: YOU - Android Release APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      java: 17
+    cache:
+      cache_paths:
+        - ~/.pub-cache
+    scripts:
+      - name: Scaffold Android platform
+        script: |
+          set -e
+          TEMP_DIR="$(mktemp -d)"
+          echo "Temp dir: $TEMP_DIR"
+          cd "$TEMP_DIR"
+          flutter create --no-pub --org com.youapp --project-name you .
+          mkdir -p "$CM_BUILD_DIR/android"
+          cp -R "$TEMP_DIR/android/." "$CM_BUILD_DIR/android/"
+          cd "$CM_BUILD_DIR"
+          if [ -f android/app/src/main/AndroidManifest.xml ]; then
+            sed -i.bak 's/android:label="you"/android:label="YOU"/g' android/app/src/main/AndroidManifest.xml
+          fi
+          echo "Android platform scaffolded."
+      - name: Flutter pub get
+        script: flutter pub get
+      - name: Generate localizations
+        script: flutter gen-l10n
+      - name: Build release APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/**/*.apk
